@@ -13,11 +13,12 @@ import io.appium.java_client.android.AndroidDriver;
 public class TestCase3_2 {
 	
 //	Precondition: GPS on, Wifi on
-//	Test case: Login with Facebook account, accept location permission, check account type, check connection with Facebook
+//	Test case: Login with Facebook account, accept location permission, check connection status with Facebook, disconnect Facebook, logout, login with email, check if Facebook is disconnected
 
 
 	AppiumDriver<MobileElement> driver;
 	static Boolean passed = false;
+	static Boolean emailLogin = false;
 	
 	public void setUp() throws MalformedURLException {
 		System.out.println("Running...");
@@ -26,7 +27,6 @@ public class TestCase3_2 {
 		cap.setCapability("deviceName", "test device");
 		cap.setCapability("appPackage", "ca.used");
 		cap.setCapability("appActivity", "ca.used.login.LoginActivity");
-		cap.setCapability("clearSystemFiles", true);
 		
 		try {
 			driver = new AndroidDriver<MobileElement>(new URL("http://0.0.0.0:4723/wd/hub"), cap);
@@ -38,13 +38,41 @@ public class TestCase3_2 {
 	}
 	
 	
+	public void hideKeyBoard() {
+	    try{driver.hideKeyboard();}
+	    catch(Exception e){}
+	}
+	
+	
 	public void signInWithFacebook() {	
 		driver.findElementById("ca.used:id/login_facebook_button").click();
 		
 //		Check Facebook login:
-
+//		(Note: Cannot successfully disconnect Facebok account and registration email. Originally, it should be directed to the Facebook account setup page, instead of going to main page directly )
+		if (driver.findElementsById("com.android.packageinstaller:id/permission_message") == null) {
+			System.out.println("Login not successful.");
+			System.out.println("Failed");
+			System.exit(0);	
+		}
+	}
+	
+	
+	public void signInWithEmail() {	
+		driver.findElementById("ca.used:id/login_email_et").click();
+		driver.getKeyboard().sendKeys("shellshell456@gmail.com");
+		hideKeyBoard();
+		driver.findElementById("ca.used:id/login_password_et").click();
+		driver.getKeyboard().sendKeys("123456");
+		hideKeyBoard();
+		driver.findElementById("ca.used:id/login_sign_in_button").click();
+		
+		if (driver.findElementsById("com.android.packageinstaller:id/permission_message") == null) {
+			System.out.println("Login not successful.");
+			System.exit(0);	
+		}
 
 	}
+	
 	
 	
 	public void locationPermission() {
@@ -72,37 +100,61 @@ public class TestCase3_2 {
 	
 	
 	public void checkAccount() {
-// Navigate to the account page:
+//		Navigate to the account page:
 		driver.findElementByXPath("//*[@class='android.support.v7.app.ActionBar$Tab' and @index='3']").click();
 		
-// Check the account status:
+//		Check the account status:
 		if (driver.findElementById("ca.used:id/profile_toolbar_settings_iv") !=  null) {
 			System.out.println("Logged in with account");
 		} else if (driver.findElementById("ca.used:id/anonymous_profile_anonymous_sign_in_button") !=  null) {
 			System.out.println("Logged in anonymously");
 		} else {
 			System.out.println("Error in account page");
+			System.exit(0);
 		}
 		
 	}
 	
 	
-//	Check Facebook connectivity:
-	public void checkFacebookConnectivity() {
+	
+	public void checkFacebookConnectivity(boolean expectedConnectionStatus) {
 		
+//		Direct to the Account Setting view:
+		driver.findElementById("ca.used:id/profile_toolbar_settings_iv").click();
+		driver.findElementByXPath("//*[@class='android.support.v7.app.ActionBar$Tab' and @index='1']").click();
 		
+//		Check the connectivity of Facebook:
+		String text = driver.findElementById("ca.used:id/fresh_loading_button_text_tv").getText();
+
+		if (text.equalsIgnoreCase("Disconnect Facebook account") && expectedConnectionStatus) { // Facebook login and connected
+			System.out.println("Connected with Facebook");
+		} else if (text.equalsIgnoreCase("Connect Facebook account") && !expectedConnectionStatus) { // Email login and disconnected
+			System.out.println("Not connected with Facebook");
+			passed = true;
+		} else {
+			System.out.println("Error in Facebook connection status");
+			System.exit(0);
+		}
+	}
+	
+	public void disconnectFacebook() {
 		
+		driver.findElementById("ca.used:id/fresh_loading_button_text_tv").click();
+		
+//		Check the connectivity of Facebook again:
+		String text = driver.findElementById("ca.used:id/fresh_loading_button_text_tv").getText();
+		if (text.equalsIgnoreCase("Connect Facebook account")) {
+			System.out.println("Disconnected.");
+		} else {
+			System.out.println("Fail to disconnect Facebook.");
+			System.exit(0);
+		}
 	}
 	
 	
 	
-	public void logout() {
-		driver.findElementByXPath("//*[@class='android.support.v7.app.ActionBar$Tab' and @index='3']").click();
-		if (driver.findElementById("ca.used:id/fresh_loading_button_text_tv").getText() == "Disconnect Facebook account") {
-			
-			driver.findElementById("ca.used:id/settings_account_connect_facebook_button").click();
-			
-		}
+	public void logout() {			
+		driver.findElementById("ca.used:id/settings_account_log_out_tv").click();
 	}
 	
 	
@@ -120,8 +172,14 @@ public class TestCase3_2 {
 		obj.locationPermission();
 		obj.locationPermissionAccept();
 		obj.checkAccount();
-//		obj.checkFacebookConnectivity();
-//		obj.logout();
+		obj.checkFacebookConnectivity(true);
+		obj.disconnectFacebook();
+		obj.logout();
+		obj.signInWithEmail();
+//		obj.locationPermission();
+//		obj.locationPermissionAccept();
+		obj.checkAccount();
+		obj.checkFacebookConnectivity(false);
 		obj.tearDown();
 		if(passed) {
 			System.out.println("Passed.");

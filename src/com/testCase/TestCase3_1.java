@@ -13,7 +13,7 @@ import io.appium.java_client.android.AndroidDriver;
 public class TestCase3_1 {
 	
 //	Precondition: GPS on, Wifi on
-//	Test case: Login with Facebook account, accept location permission, check account type, check connection with Facebook
+//	Test case: Login with Facebook account, accept location permission, check connection status with Facebook
 
 
 	AppiumDriver<MobileElement> driver;
@@ -26,7 +26,6 @@ public class TestCase3_1 {
 		cap.setCapability("deviceName", "test device");
 		cap.setCapability("appPackage", "ca.used");
 		cap.setCapability("appActivity", "ca.used.login.LoginActivity");
-		cap.setCapability("clearSystemFiles", true);
 		
 		try {
 			driver = new AndroidDriver<MobileElement>(new URL("http://0.0.0.0:4723/wd/hub"), cap);
@@ -42,8 +41,12 @@ public class TestCase3_1 {
 		driver.findElementById("ca.used:id/login_facebook_button").click();
 		
 //		Check Facebook login:
-
-
+//		(Note: Cannot successfully disconnect Facebok account and registration email. Originally, it should be directed to the Facebook account setup page, instead of going to main page directly )
+		if (driver.findElementsById("com.android.packageinstaller:id/permission_message") == null) {
+			System.out.println("Login not successful.");
+			System.out.println("Failed");
+			System.exit(0);	
+		}
 	}
 	
 	
@@ -82,36 +85,26 @@ public class TestCase3_1 {
 			System.out.println("Logged in anonymously");
 		} else {
 			System.out.println("Error in account page");
-		}
-		
+		}	
 	}
 	
 	
-//	Check Facebook connectivity:
+	
 	public void checkFacebookConnectivity() {
 		
-//		String text = driver.findElementByAccessibilityId("Accessibility Node Provider").getText();
-//		if(text.equalsIgnoreCase("Accessibility Node Provider"))
-//		{
-//			System.out.println("Passed");
-//		} else
-//		{
-//			System.out.println("Failed");
-//		}
+//		Direct to the Account Setting view:
+		driver.findElementById("ca.used:id/profile_toolbar_settings_iv").click();
+		driver.findElementByXPath("//*[@class='android.support.v7.app.ActionBar$Tab' and @index='1']").click();
 		
+//		Check the connectivity of Facebook:
+		String text = driver.findElementById("ca.used:id/fresh_loading_button_text_tv").getText();
+		if (text.equalsIgnoreCase("Disconnect Facebook account")) {
+			System.out.println("Connected with Facebook");
+			passed = true;
+		} else {
+			System.out.println("Not connected with Facebook");
+		}	
 	}
-	
-	
-	
-	public void logout() {
-		driver.findElementByXPath("//*[@class='android.support.v7.app.ActionBar$Tab' and @index='3']").click();
-		if (driver.findElementById("ca.used:id/fresh_loading_button_text_tv").getText() == "Disconnect Facebook account") {
-			
-			driver.findElementById("ca.used:id/settings_account_connect_facebook_button").click();
-			
-		}
-	}
-	
 	
 	
 	public void tearDown() {
@@ -127,8 +120,7 @@ public class TestCase3_1 {
 		obj.locationPermission();
 		obj.locationPermissionAccept();
 		obj.checkAccount();
-//		obj.checkFacebookConnectivity();
-//		obj.logout();
+		obj.checkFacebookConnectivity();
 		obj.tearDown();
 		if(passed) {
 			System.out.println("Passed.");
